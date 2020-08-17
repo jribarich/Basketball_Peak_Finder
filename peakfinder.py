@@ -54,6 +54,9 @@ def usage():
 def get_pic(soup):
     link = soup.select("img[src^=http]")
     lnk = link[1]["src"]
+    
+    if '.svg' in lnk:
+        return  # player has no pic
 
     with open(os.path.basename(lnk),"wb") as f:
         f.write(requests.get(lnk).content)
@@ -168,6 +171,8 @@ def player_info(soup):
         for i in x.find_all('strong'):
             if 'Position' in i.text:  # position and shooting
                 pos_flag = 1
+                nick_flag = 1  # no nickname
+
             if 'College' in i.text:  # College
                 coll_flag = 1
 

@@ -145,7 +145,9 @@ class MplCanvas(FigureCanvasQTAgg):
     def redraw(self, peak):
         # seasons = peak[1], peak sum = peak[2], ppg/apg/rpg = peak[3,4,5]
         x = peak[1]
+        idx = np.arange(len(peak[1]))  # turns season into a list of indices
         peak_sum = peak[2]
+        max_idx = peak[2].index(max(peak[2]))
         ppg = peak[3]
         apg = peak[4]
         rpg = peak[5]
@@ -154,22 +156,20 @@ class MplCanvas(FigureCanvasQTAgg):
         self.stats.cla()  # clears frame
         self.fig.canvas.draw_idle()  # clears canvas
         
-
         self.peak_graph.set_title('Peak')
-        for tick in self.peak_graph.get_xticklabels():  
-            tick.set_rotation(70)  # rotates ticks
+        self.peak_graph.set_xticks(idx)
+        self.peak_graph.set_xticklabels(peak[1], rotation = 70)
+        self.peak_graph.plot(idx, peak_sum)  # peak sum
+        self.peak_graph.axvspan(max_idx, max_idx, color='C1')  # highlights peak
+
 
         self.stats.set_title('Stats Per Game')
-        for tick in self.stats.get_xticklabels():
-            tick.set_rotation(70)  # rotates ticks
-
-        self.peak_graph.plot(x, peak_sum)  # peak sum
-        self.peak_graph.axvspan(peak[0][0], peak[0][0], color='C1')  # highlights peak
-
-        self.stats.plot(x, ppg, color = 'green')  # points
-        self.stats.plot(x, apg, color = 'blue')   # assists
-        self.stats.plot(x, rpg, color = 'red')  # rebounds
-        self.stats.axvspan(peak[0][0], peak[0][0], color='C1') # highlights peak
+        self.stats.set_xticks(idx)
+        self.stats.set_xticklabels(peak[1], rotation=70)
+        self.stats.plot(idx, ppg, color = 'green')  # points
+        self.stats.plot(idx, apg, color = 'blue')   # assists
+        self.stats.plot(idx, rpg, color = 'red')  # rebounds
+        self.stats.axvspan(max_idx, max_idx, color='C1') # highlights peak
 
         self.stats.legend(['Points', 'Assists', 'Rebounds'])
 
@@ -188,7 +188,7 @@ class Search_Options_Widget(QWidget):
         self.name = None
         self.prev_name = None  # previous name
         self.player = pf.Player()
-        self.peak_data = None # do this tomorrow to save calls
+        self.peak_data = None
 
         # Creates search button
         self.search_button = QPushButton('Find Peak')
