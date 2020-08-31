@@ -72,9 +72,17 @@ def remove_pic(ext):
 
 
 def peak_calculation(df):
-     calc = df['PER'].astype(float) + df['WS'].astype(float)
+    flt = lambda x: x.astype(float)  # changes data into floats
 
-     return calc
+    PER = flt(df['PER'])/flt(df['PER']).max()
+    WS = flt(df['WS'])/flt(df['WS']).max()
+    PPG = flt(df['PTS'])/flt(df['PTS']).max()
+    APG = flt(df['AST'])/flt(df['AST']).max()
+    RPG = flt(df['TRB'])/flt(df['TRB']).max()
+
+    calc = PER + WS + PPG + APG + RPG
+
+    return calc
 
 
 def determine_peak_season(p): 
