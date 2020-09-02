@@ -1,10 +1,16 @@
 # Basketball Peak Finder
 
-For basketball fans and sports fans who
-love statistics. This application finds the
-peak season of an NBA player's career and 
-displays statistics and charts related to
-that player.
+For basketball fans and sports fans who love 
+statistics. This application finds the peak 
+season of an NBA player's career and displays 
+statistics and charts related to that player. 
+It can find a player's peak performance in the
+regular season and/or the postseason.
+
+
+## Demo
+
+GIF coming soon!
 
 ## Installation
 
@@ -15,7 +21,29 @@ to install the neccessary dependencies.
 pip install -r requirements.txt
 ```
 
-To update the roster:
-```bash
-python 
+## Usage
 
+The current database goes up to 2019-20 season.
+To update the database file:
+```bash
+python players.py
+```
+
+To run the application:
+```bash
+python peak_ui.py
+```
+
+## Support
+
+For any suggestons or questions contact me via email: 
+jackribarich@yahoo.com
+
+## Author
+
+Jack Ribarich
+
+## Project Status
+
+As of August 2020, the project GUI is finished, however, the 
+calculation for the peak of player's career may be adjusted. 
