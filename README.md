@@ -8,3 +8,14 @@ that player.
 
 ## Installation
 
+Make sure you have pip or another package manager
+to install the neccessary dependencies.
+
+```bash
+pip install -r requirements.txt
+```
+
+To update the roster:
+```bash
+python 
+
