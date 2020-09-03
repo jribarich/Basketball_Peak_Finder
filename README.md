@@ -10,7 +10,7 @@ regular season and/or the postseason.
 
 ## Demo
 
-GIF coming soon!
+![](demo.gif)
 
 ## Installation
 
