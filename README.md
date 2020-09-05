@@ -23,8 +23,8 @@ pip install -r requirements.txt
 
 ## Usage
 
-The current database goes up to 2019-20 season.
-To update the database file:
+The current player database goes up to 2019-20 season.
+To update the player database file:
 ```bash
 python players.py
 ```
