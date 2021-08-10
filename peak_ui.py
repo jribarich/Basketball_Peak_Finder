@@ -67,12 +67,12 @@ class Peak_Widget(QWidget):
     def update(self, peak):
         self.season_label.setText('<b>Season: </b>' + peak[0])
         self.team_label.setText('<b>Team: </b>' + peak[1])
-        self.PER_label.setText('<b>PER: </b>' + peak[2])
-        self.WS_label.setText('<b>Win Shares: </b>' + peak[3])
-        self.FG_label.setText('<b>FG%: </b>' + peak[4])
-        self.PPG_label.setText('<b>PPG: </b>' + peak[5])
-        self.APG_label.setText('<b>APG: </b>' + peak[6])
-        self.RPG_label.setText('<b>RPG: </b>' + peak[7])
+        self.PER_label.setText('<b>PER: </b>' + str(peak[2]))
+        self.WS_label.setText('<b>Win Shares: </b>' + str(peak[3]))
+        self.FG_label.setText('<b>FG%: </b>' + str(peak[4]))
+        self.PPG_label.setText('<b>PPG: </b>' + str(peak[5]))
+        self.APG_label.setText('<b>APG: </b>' + str(peak[6]))
+        self.RPG_label.setText('<b>RPG: </b>' + str(peak[7]))
 
 class Player_Info_Widget(QWidget):
     

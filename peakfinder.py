@@ -17,6 +17,7 @@ import ast
 from bs4 import BeautifulSoup
 from bs4 import Comment
 import pandas as pd
+import sheets
 from rich import print  # easily read stuff on the command line
 
 
@@ -103,9 +104,9 @@ def determine_peak_season(p):
     
     seasons = reg['Season'].tolist()
     seas_sum = reg['sum'].tolist()
-    ppg = reg['PTS'].astype(float).tolist()
-    apg = reg['AST'].astype(float).tolist()
-    rpg = reg['TRB'].astype(float).tolist()
+    ppg = reg['PTS'].tolist()
+    apg = reg['AST'].tolist()
+    rpg = reg['TRB'].tolist()
     
     peak_data[0] = [peak_list, seasons, seas_sum, ppg, apg, rpg]
 
@@ -119,9 +120,9 @@ def determine_peak_season(p):
 
         seasons = plof['Season'].tolist()
         seas_sum = plof['sum'].tolist()
-        ppg = plof['PTS'].astype(float).tolist()
-        apg = plof['AST'].astype(float).tolist()
-        rpg = plof['TRB'].astype(float).tolist()
+        ppg = plof['PTS'].tolist()
+        apg = plof['AST'].tolist()
+        rpg = plof['TRB'].tolist()
 
         peak_data[1] = [peak_list, seasons, seas_sum, ppg, apg, rpg]
 
@@ -210,85 +211,14 @@ def player_info(soup):
     return nicknames, cleaned_pos, height, hand, college
 
 
-def table_data(soup):
-    rows = soup.find_all('tr')
-
-    headers = [[th.text for th in rows[i].find_all('th')] for i in range(len(rows))]
-    
-    categories = headers[0]
-    seasons = headers[1:]
-
-    data = [[td.text for td in rows[i].find_all('td')] for i in range(len(rows)-1)][1:]
-    
-    i = 0
-    while True:
-        if len(seasons[i]) != 0:
-            if seasons[i][0] != 'Career':
-                data[i].insert(0, seasons[i][0])
-
-            else:
-                break
-
-        i += 1
-
-    # 2 variables used to track if player has been traded midseason
-    traded = 0
-    age = None
-
-    clean_data = []
-    for j in range(len(data)):
-        if ((data[j][1]).isnumeric()) and not ('Did Not Play' in data[j][2]):
-            if 'TOT' in data[j][2]:
-                data[j][2] = ''
-                age = data[j][1]
-
-            elif age == data[j][1]:
-                traded += 1
-
-                # change team name to multiple teams
-                if traded > 1:
-                    data[j-traded][2] = data[j-traded][2] + ', ' + data[j][2] 
-
-                else:
-                    data[j-traded][2] = data[j-traded][2] + data[j][2]
-
-            elif age != data[j][1] and traded != 0:
-                # add previous data from traded season and current data
-                clean_data.append(data[j-traded-1])
-                clean_data.append(data[j])
-
-                age = None
-                traded = 0
-
-            else:
-                clean_data.append(data[j])
-
-    stats = pd.DataFrame(clean_data, columns= categories)
-    stats[stats.eq('')] = 0  # sets all empty columns to 0
-
-    return stats
-
-
-def special_data(soup, table_name):
-    ''' 
-        used for the JavaScript tables 
-        (all tables besides reg.season per game)
-    '''
-    table = soup.find('div', {'id': table_name})
-
-    if table == None:
-        return None
-
-    comments = table.find_all(string=lambda text: isinstance(text, Comment))
-
-    new_soup = BeautifulSoup(str(comments), 'html.parser')
-
-    return new_soup 
-
-
 def player_stats(p):
     url = 'https://www.basketball-reference.com/players/'
     end = '.html'
+
+    made_playoffs = {'Regular': 1, 'Playoffs': 2, 'Regular Advanced': 5, 'Playoffs Advanced': 6}
+    no_playoffs = {'Regular': 1, 'Regular Advanced': 3}
+    drop_list = ['Age', 'Tm' ,'Lg', 'Pos', 'G', 'MP']
+
 
     player_url = url + p.ext[0] + '/' + p.ext + end
     response = requests.get(player_url)
@@ -296,34 +226,42 @@ def player_stats(p):
 
     p.nicknames, p.position, p.height, p.hand, p.college = player_info(soup)
 
-    p.reg_season = table_data(soup)
+    adv_playoff_df = sheets.getDF(player_url, made_playoffs['Playoffs Advanced'])
 
-    drop_list = ['Age', 'Tm' ,'Lg', 'Pos', 'G', 'MP']
-    adv_soup = special_data(soup, 'all_advanced')
-    adv_df = table_data(adv_soup).drop(drop_list, axis = 1)
-
-    # merges advanced stats into stats
-    p.reg_season = pd.merge(p.reg_season, adv_df, how='outer', on='Season')
-
-    playoff_soup = special_data(soup, 'all_playoffs_per_game')
-    adv_playoff_soup = special_data(soup, 'all_playoffs_advanced')
-
-    if playoff_soup != None:  # check if player has made playoffs
-        p.playoff = table_data(playoff_soup)
-        adv_playoff_df = table_data(adv_playoff_soup).drop(drop_list, axis = 1)
-
-         # merges advanced playoffs into playoffs into one
+    if not adv_playoff_df.empty:
+        p.playoff = sheets.getDF(player_url, made_playoffs['Playoffs'])
+        p.playoff.drop(drop_list, axis=1, inplace=True)
+        
+        p.reg_season = sheets.getDF(player_url, made_playoffs['Regular'])
+        p.reg_season.drop(drop_list, axis=1, inplace=True)
+        adv_df = sheets.getDF(player_url, made_playoffs['Regular Advanced'])
+        
+        # merges advanced stats into stats
+        p.reg_season = pd.merge(p.reg_season, adv_df, how='outer', on='Season')
         p.playoff = pd.merge(p.playoff, adv_playoff_df, how='outer', on='Season')
+        
+        # Drop rows that don't match 'YEAR-YEAR' format such as 'Career'
+        p.reg_season = p.reg_season[p.reg_season['Season'].str.contains('-')].dropna()
+        p.playoff = p.playoff[p.playoff['Season'].str.contains('-')].dropna()
     
     else:
         p.playoff = pd.DataFrame({'P' : []})  # empty dataframe
+        p.reg_season = sheets.getDF(player_url, no_playoffs['Regular'])
+        p.reg_season.drop(drop_list, axis=1, inplace=True)
+        adv_df = sheets.getDF(player_url, no_playoffs['Regular Advanced'])
+        
+        # merges advanced stats into stat
+        p.reg_season = pd.merge(p.reg_season, adv_df, how='outer', on='Season')
+
+        # Drop rows that don't match 'YEAR-YEAR' format such as 'Career'
+        p.reg_season = p.reg_season[p.reg_season['Season'].str.contains('-')].dropna()
 
     get_pic(soup)
 
     peak_data = determine_peak_season(p)
 
     return peak_data
-
+ 
 
 def retrieve(name):
     debug = 0
@@ -346,7 +284,3 @@ def retrieve(name):
         print(repr(player))
 
     return player, peak_data
-
-
-if __name__ == "__main__":
-    retrieve('debug')
