@@ -13,6 +13,9 @@ August 4th, 2020
 import sys
 import os
 import requests
+import time
+from threading import Thread
+from queue import Queue
 import ast
 from bs4 import BeautifulSoup
 from bs4 import Comment
@@ -25,7 +28,7 @@ class Player():
     def __init__(self, name = None, ext = None, 
         nicknames = None, position = None, height = None, 
         hand = None, college = None, reg_season = None, 
-        playoff = None):
+        playoff = None, adv_data = None):
         self.name = name
         self.ext = ext  
         self.nicknames = nicknames  # list
@@ -35,6 +38,7 @@ class Player():
         self.college = college  
         self.reg_season = reg_season  # panda DataFrame
         self.playoff = playoff  # panda DataFrame
+        self.adv_data = adv_data # panda Dataframe of Advanced Stats
 
     def __repr__(self):
         return(f"""Nicknames: {self.nicknames}\nPosition: {self.position}
@@ -149,7 +153,7 @@ def get_player(p, name):
             return
 
 
-def player_info(soup):
+def player_info(soup, p):
     position_dict = {'Point Guard': 'PG', 'Shooting Guard': 'SG', 
                     'Small Forward': 'SF', 'Power Forward': 'PF',
                     'Center': 'C'}
@@ -208,36 +212,56 @@ def player_info(soup):
     cleaned_pos = [val for key,val in position_dict.items() if key in position]
     cleaned_pos = '/'.join(cleaned_pos)
 
-    return nicknames, cleaned_pos, height, hand, college
+    p.nicknames = nicknames
+    p.position = cleaned_pos
+    p.height = height
+    p.hand = hand
+    p.college = college
 
 
-def player_stats(p):
-    url = 'https://www.basketball-reference.com/players/'
-    end = '.html'
+def player_data(p, player_url):
+    response = requests.get(player_url)
+    soup = BeautifulSoup(response.text, 'html.parser')
 
+    # Create threads
+    t3 = Thread(target=get_pic, args=(soup, ))
+    t4 = Thread(target=player_info, args=(soup, p))
+    
+    t3.start()
+    t4.start()
+
+    # Block until both Threads are done
+    t3.join()
+    t4.join()
+
+def player_tables(p, player_url):
     made_playoffs = {'Regular': 1, 'Playoffs': 2, 'Regular Advanced': 5, 'Playoffs Advanced': 6}
     no_playoffs = {'Regular': 1, 'Regular Advanced': 3}
     drop_list = ['Age', 'Tm' ,'Lg', 'Pos', 'G', 'MP']
 
-
-    player_url = url + p.ext[0] + '/' + p.ext + end
-    response = requests.get(player_url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    p.nicknames, p.position, p.height, p.hand, p.college = player_info(soup)
-
-    adv_playoff_df = sheets.getDF(player_url, made_playoffs['Playoffs Advanced'])
+    adv_playoff_df = sheets.getDF(player_url, None, 0, made_playoffs['Playoffs Advanced'], 'Playoffs_PeakFinder')
 
     if not adv_playoff_df.empty:
-        p.playoff = sheets.getDF(player_url, made_playoffs['Playoffs'])
-        p.playoff.drop(drop_list, axis=1, inplace=True)
-        
-        p.reg_season = sheets.getDF(player_url, made_playoffs['Regular'])
+        # Create threads
+        t5 = Thread(target=sheets.getDF, args=(player_url, p, 1, made_playoffs['Regular'], 'Reg_PeakFinder'))
+        t6 = Thread(target=sheets.getDF, args=(player_url, p, 2, made_playoffs['Regular Advanced'], 'RegAdv_PeakFinder'))
+        t7 = Thread(target=sheets.getDF, args=(player_url, p, 3, made_playoffs['Playoffs'], 'Playoffs_PeakFinder'))
+
+        t5.start()
+        t6.start()
+        t7.start()
+
+        # Block until all threads are done
+        t5.join()
+        t6.join()
+        t7.join()
+
+        # Drop unneccesary columns to make JOIN smoother
         p.reg_season.drop(drop_list, axis=1, inplace=True)
-        adv_df = sheets.getDF(player_url, made_playoffs['Regular Advanced'])
-        
+        p.playoff.drop(drop_list, axis=1, inplace=True)
+
         # merges advanced stats into stats
-        p.reg_season = pd.merge(p.reg_season, adv_df, how='outer', on='Season')
+        p.reg_season = pd.merge(p.reg_season, p.adv_data, how='outer', on='Season')
         p.playoff = pd.merge(p.playoff, adv_playoff_df, how='outer', on='Season')
         
         # Drop rows that don't match 'YEAR-YEAR' format such as 'Career'
@@ -245,18 +269,45 @@ def player_stats(p):
         p.playoff = p.playoff[p.playoff['Season'].str.contains('-')].dropna()
     
     else:
-        p.playoff = pd.DataFrame({'P' : []})  # empty dataframe
-        p.reg_season = sheets.getDF(player_url, no_playoffs['Regular'])
-        p.reg_season.drop(drop_list, axis=1, inplace=True)
-        adv_df = sheets.getDF(player_url, no_playoffs['Regular Advanced'])
+        # Create threads
+        t5 = Thread(target=sheets.getDF, args=(player_url, p, 1, no_playoffs['Regular'], 'Reg_PeakFinder'))
+        t6 = Thread(target=sheets.getDF, args=(player_url, p, 2, no_playoffs['Regular Advanced'], 'RegAdv_PeakFinder'))
         
+        t5.start()
+        t6.start()
+
+        # Block until both threads are done
+        t5.join()
+        t6.join()
+
+        p.reg_season.drop(drop_list, axis=1, inplace=True)
+        p.playoff = pd.DataFrame({'P' : []})  # empty dataframe
+
         # merges advanced stats into stat
         p.reg_season = pd.merge(p.reg_season, adv_df, how='outer', on='Season')
 
         # Drop rows that don't match 'YEAR-YEAR' format such as 'Career'
         p.reg_season = p.reg_season[p.reg_season['Season'].str.contains('-')].dropna()
 
-    get_pic(soup)
+
+def player_stats(p):
+    url = 'https://www.basketball-reference.com/players/'
+    end = '.html'
+
+    thread_list = []
+
+    player_url = url + p.ext[0] + '/' + p.ext + end
+
+    # Create threads
+    t1 = Thread(target=player_data, args=(p, player_url))
+    t2 = Thread(target=player_tables, args=(p, player_url))
+    
+    t1.start()
+    t2.start()
+
+    # Block until both threads are done
+    t1.join()
+    t2.join()
 
     peak_data = determine_peak_season(p)
 

@@ -29,12 +29,25 @@ def fillSheet(ws, player_link, tableNum):
 
     ws.update_value('A1', text)
 
-def getDF(player_link, tableNum):
-    title = 'BballTest'
+def getDF(player_link, p, retType, tableNum, title):
     client = authorizeSheet()
     ws = getAccess(client, title)
     fillSheet(ws, player_link, tableNum)
 
     df = ws.get_as_df(has_header=True)
 
-    return df
+    # For Multi-Threading Purposes
+    if retType == 0:
+        return df
+
+    elif retType == 1:
+        p.reg_season = df
+    
+    elif retType == 2:
+        p.adv_data = df
+
+    elif retType == 3:
+        p.playoff = df
+    
+    else:
+        return None
