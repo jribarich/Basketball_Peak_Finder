@@ -285,7 +285,7 @@ def player_tables(p, player_url):
         p.playoff = pd.DataFrame({'P' : []})  # empty dataframe
 
         # merges advanced stats into stat
-        p.reg_season = pd.merge(p.reg_season, adv_df, how='outer', on='Season')
+        p.reg_season = pd.merge(p.reg_season, p.adv_data, how='outer', on='Season')
 
         # Drop rows that don't match 'YEAR-YEAR' format such as 'Career'
         p.reg_season = p.reg_season[p.reg_season['Season'].str.contains('-')].dropna()

@@ -21,9 +21,6 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 # The ID and range of a sample spreadsheet.
 SAMPLE_SPREADSHEET_ID = '1KS682cdzXrCMYYmjyvBZdMSIrmPvGXbI_BX_3wuyRNs'
-REG_RANGE = 'Regular!A1:AD'
-REGADV_RANGE = 'RegAdv!A1:AC'
-PLAYOFF_RANGE = 'Playoffs!A1:AD'
 
 
 def authorizeSheet():
@@ -93,6 +90,9 @@ def retrieveDF(sheet, range):
     df.columns = new_header
 
     #drop rows where player was injured
+    if(df.empty):
+        return df
+
     df = df[~df["Tm"].str.contains('Did Not Play', na=False)]
 
     return df
