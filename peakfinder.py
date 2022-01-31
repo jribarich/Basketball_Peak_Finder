@@ -13,12 +13,9 @@ August 4th, 2020
 import sys
 import os
 import requests
-import time
 from threading import Thread
-from queue import Queue
 import ast
 from bs4 import BeautifulSoup
-from bs4 import Comment
 import pandas as pd
 import sheets
 from rich import print  # easily read stuff on the command line
@@ -69,8 +66,7 @@ def get_pic(soup):
 
 def remove_pic(ext):
     try: 
-        filename = ext + '.jpg'
-        os.remove(filename)
+        os.remove(f'{ext}.jpg')
 
     except:
         return  # do nothing if player picture doesn't exist
@@ -108,9 +104,10 @@ def determine_peak_season(p):
     
     seasons = reg['Season'].tolist()
     seas_sum = reg['sum'].tolist()
-    ppg = reg['PTS'].tolist()
-    apg = reg['AST'].tolist()
-    rpg = reg['TRB'].tolist()
+
+    ppg = [float(i) for i in reg['PTS'].tolist()]
+    apg = [float(i) for i in reg['AST'].tolist()]
+    rpg = [float(i) for i in reg['TRB'].tolist()]
     
     peak_data[0] = [peak_list, seasons, seas_sum, ppg, apg, rpg]
 
@@ -124,9 +121,9 @@ def determine_peak_season(p):
 
         seasons = plof['Season'].tolist()
         seas_sum = plof['sum'].tolist()
-        ppg = plof['PTS'].tolist()
-        apg = plof['AST'].tolist()
-        rpg = plof['TRB'].tolist()
+        ppg = [float(i) for i in plof['PTS'].tolist()]
+        apg = [float(i) for i in plof['AST'].tolist()]
+        rpg = [float(i) for i in plof['TRB'].tolist()]
 
         peak_data[1] = [peak_list, seasons, seas_sum, ppg, apg, rpg]
 
@@ -238,14 +235,18 @@ def player_tables(p, player_url):
     made_playoffs = {'Regular': 1, 'Playoffs': 2, 'Regular Advanced': 5, 'Playoffs Advanced': 6}
     no_playoffs = {'Regular': 1, 'Regular Advanced': 3}
     drop_list = ['Age', 'Tm' ,'Lg', 'Pos', 'G', 'MP']
+    REG_RANGE = 'Regular!A1:AD'
+    PLOFADV_RANGE = 'Playoffs_Adv!A1:AC'
+    REGADV_RANGE = 'RegAdv!A1:AC'
+    PLAYOFF_RANGE = 'Playoffs!A1:AD'
 
-    adv_playoff_df = sheets.getDF(player_url, None, 0, made_playoffs['Playoffs Advanced'], 'Playoffs_PeakFinder')
+    adv_playoff_df = sheets.getDF(player_url, None, 0, made_playoffs['Playoffs Advanced'], PLOFADV_RANGE)
 
     if not adv_playoff_df.empty:
         # Create threads
-        t5 = Thread(target=sheets.getDF, args=(player_url, p, 1, made_playoffs['Regular'], 'Reg_PeakFinder'))
-        t6 = Thread(target=sheets.getDF, args=(player_url, p, 2, made_playoffs['Regular Advanced'], 'RegAdv_PeakFinder'))
-        t7 = Thread(target=sheets.getDF, args=(player_url, p, 3, made_playoffs['Playoffs'], 'Playoffs_PeakFinder'))
+        t5 = Thread(target=sheets.getDF, args=(player_url, p, 1, made_playoffs['Regular'], REG_RANGE))
+        t6 = Thread(target=sheets.getDF, args=(player_url, p, 2, made_playoffs['Regular Advanced'], REGADV_RANGE))
+        t7 = Thread(target=sheets.getDF, args=(player_url, p, 3, made_playoffs['Playoffs'], PLAYOFF_RANGE))
 
         t5.start()
         t6.start()
@@ -265,13 +266,13 @@ def player_tables(p, player_url):
         p.playoff = pd.merge(p.playoff, adv_playoff_df, how='outer', on='Season')
         
         # Drop rows that don't match 'YEAR-YEAR' format such as 'Career'
-        p.reg_season = p.reg_season[p.reg_season['Season'].str.contains('-')].dropna()
-        p.playoff = p.playoff[p.playoff['Season'].str.contains('-')].dropna()
+        p.reg_season = p.reg_season[p.reg_season['Season'].str.contains('-', na=False)]
+        p.playoff = p.playoff[p.playoff['Season'].str.contains('-', na=False)]
     
     else:
         # Create threads
-        t5 = Thread(target=sheets.getDF, args=(player_url, p, 1, no_playoffs['Regular'], 'Reg_PeakFinder'))
-        t6 = Thread(target=sheets.getDF, args=(player_url, p, 2, no_playoffs['Regular Advanced'], 'RegAdv_PeakFinder'))
+        t5 = Thread(target=sheets.getDF, args=(player_url, p, 1, no_playoffs['Regular'], REG_RANGE))
+        t6 = Thread(target=sheets.getDF, args=(player_url, p, 2, no_playoffs['Regular Advanced'], REGADV_RANGE))
         
         t5.start()
         t6.start()

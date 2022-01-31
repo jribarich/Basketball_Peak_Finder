@@ -69,7 +69,7 @@ class Peak_Widget(QWidget):
         self.team_label.setText('<b>Team: </b>' + peak[1])
         self.PER_label.setText('<b>PER: </b>' + str(peak[2]))
         self.WS_label.setText('<b>Win Shares: </b>' + str(peak[3]))
-        self.FG_label.setText('<b>FG%: </b>' + str(peak[4]))
+        self.FG_label.setText('<b>FG%: </b>' + str(round(float(peak[4])*100, 1)))
         self.PPG_label.setText('<b>PPG: </b>' + str(peak[5]))
         self.APG_label.setText('<b>APG: </b>' + str(peak[6]))
         self.RPG_label.setText('<b>RPG: </b>' + str(peak[7]))
@@ -147,7 +147,7 @@ class MplCanvas(FigureCanvasQTAgg):
         x = peak[1]
         idx = np.arange(len(peak[1]))  # turns season into a list of indices
         peak_sum = peak[2]
-        max_idx = peak[2].index(max(peak[2]))
+        max_idx = peak[2].index(max(peak[2])) 
         ppg = peak[3]
         apg = peak[4]
         rpg = peak[5]
@@ -166,6 +166,7 @@ class MplCanvas(FigureCanvasQTAgg):
         self.stats.set_title('Stats Per Game')
         self.stats.set_xticks(idx)
         self.stats.set_xticklabels(peak[1], rotation=70)
+        # self.stats.set_yticks(np.arange(0, max(ppg) + 1, 1))
         self.stats.plot(idx, ppg, color = 'green')  # points
         self.stats.plot(idx, apg, color = 'blue')   # assists
         self.stats.plot(idx, rpg, color = 'red')  # rebounds
