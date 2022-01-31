@@ -45,5 +45,4 @@ Jack Ribarich
 
 ## Project Status
 
-As of August 2020, the project GUI is finished, however, the 
-calculation for the peak of player's career may be adjusted. 
+Updated up to the 2021-2022 season!
